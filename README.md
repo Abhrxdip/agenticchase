@@ -4,9 +4,6 @@ An autonomous agent framework designed to plan, retrieve context, and execute mu
 
 ---
 
-## ⚡ Environment Setup
-Copy the sample environment file and configure your API credentials:
-```bash
-cp sample.env .env
-```
-Dependencies managed via `pyproject.toml` and `requirements.txt`.
+## ⚡ Features
+- Multi-engine Speech Synthesis (gTTS & Deepgram integrations)
+- Modular agent tool harness
