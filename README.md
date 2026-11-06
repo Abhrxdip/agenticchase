@@ -6,4 +6,4 @@ An autonomous agent framework designed to plan, retrieve context, and execute mu
 
 ## ⚡ Features
 - Multi-engine Speech Synthesis (gTTS & Deepgram integrations)
-- Modular agent tool harness
+- Voice Recording & Transcription (Groq Whisper API)
