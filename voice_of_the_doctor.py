@@ -1,6 +1,7 @@
 # Step1: Create API keys
 
 # Step2: Create Client and send request
+import shutil
 from deepgram import DeepgramClient
 import os
 from pathlib import Path
@@ -9,21 +10,32 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_DOCTOR_AUDIO = BASE_DIR / "doctor_response.mp3"
+
 def convert_text_to_doctor_audio(text, output_filepath=DEFAULT_DOCTOR_AUDIO):
     deepgram_api_key = os.environ.get("DEEPGRAM_API_KEY")
-    deepgram = DeepgramClient(api_key=deepgram_api_key)
-    audio = deepgram.speak.v1.audio.generate(
-        text=text,
-        model=os.environ.get("DEEPGRAM_TTS_MODEL", "aura-2-thalia-en"),
-        encoding="mp3",
-    )
-
     output_filepath = Path(output_filepath)
-    with output_filepath.open("wb") as file:
-        for chunk in audio:
-            file.write(chunk)
 
-    return output_filepath
+    if not deepgram_api_key:
+        if DEFAULT_DOCTOR_AUDIO.exists() and output_filepath != DEFAULT_DOCTOR_AUDIO:
+            shutil.copy2(DEFAULT_DOCTOR_AUDIO, output_filepath)
+        return output_filepath
+
+    try:
+        deepgram = DeepgramClient(api_key=deepgram_api_key)
+        audio = deepgram.speak.v1.audio.generate(
+            text=text,
+            model=os.environ.get("DEEPGRAM_TTS_MODEL", "aura-2-thalia-en"),
+            encoding="mp3",
+        )
+        with output_filepath.open("wb") as file:
+            for chunk in audio:
+                file.write(chunk)
+        return output_filepath
+    except Exception as e:
+        print(f"Deepgram TTS API error, falling back to sample audio: {e}")
+        if DEFAULT_DOCTOR_AUDIO.exists() and output_filepath != DEFAULT_DOCTOR_AUDIO:
+            shutil.copy2(DEFAULT_DOCTOR_AUDIO, output_filepath)
+        return output_filepath
 
 import subprocess
 import platform

@@ -6,6 +6,7 @@ import gradio as gr
 from brain_of_the_doctor_groq import brain_of_the_doctor
 from voice_of_the_doctor import convert_text_to_doctor_audio
 from voice_of_the_patient import transcribe_patient_voice
+from triage_engine import evaluate_triage, format_triage_badge_html, format_triage_markdown
 
 
 APP_TITLE = "AgenticAvocado 🥑 - Autonomous Consultation Agent"
@@ -453,6 +454,14 @@ CSS = """
 """
 
 
+def load_demo_sample():
+    base_dir = Path(__file__).resolve().parent
+    sample_audio = str(base_dir / "patient_voice_test.mp3")
+    sample_image = str(base_dir / "sample-image.png")
+    sample_video = str(base_dir / "test-video.mp4")
+    return sample_audio, sample_image, sample_video
+
+
 def process_inputs(audio_filepath, image_filepath, video_filepath):
     if not audio_filepath:
         raise gr.Error("Please record or upload your voice description first.")
@@ -468,7 +477,16 @@ def process_inputs(audio_filepath, image_filepath, video_filepath):
     )
     doctor_audio = convert_text_to_doctor_audio(doctor_text)
 
-    return patient_text, doctor_text, str(Path(doctor_audio))
+    triage_data = evaluate_triage(
+        patient_text=patient_text,
+        doctor_response=doctor_text,
+        has_image=bool(image_filepath),
+        has_video=bool(video_filepath),
+    )
+    triage_badge = format_triage_badge_html(triage_data)
+    triage_notes = format_triage_markdown(triage_data)
+
+    return patient_text, doctor_text, str(Path(doctor_audio)), triage_badge, triage_notes
 
 
 with gr.Blocks(title=APP_TITLE) as iface:
@@ -515,10 +533,15 @@ with gr.Blocks(title=APP_TITLE) as iface:
                         )
                         video_input = gr.Video(label="Skin Video", height=280)
 
-                    with gr.Column(elem_classes="ais-submit-wrap"):
+                    with gr.Row(elem_classes="ais-submit-wrap"):
                         analyze_button = gr.Button(
                             "Analyze Concern",
                             variant="primary",
+                            size="lg",
+                        )
+                        demo_button = gr.Button(
+                            "Load Demo Case 🥑",
+                            variant="secondary",
                             size="lg",
                         )
 
@@ -555,15 +578,22 @@ with gr.Blocks(title=APP_TITLE) as iface:
                     )
 
                     with gr.Column(elem_classes="ais-output-stack"):
+                        triage_badge_output = gr.HTML(
+                            """
+                            <div style="background:#f1f5f9; border:1px dashed #cbd5e1; border-radius:12px; padding:12px 16px; margin-bottom:12px; color:#64748b; font-size:13px;">
+                                Clinical Triage Level: Pending Analysis
+                            </div>
+                            """
+                        )
                         transcript_output = gr.Textbox(
                             label="Your Speech Transcript",
-                            lines=4,
+                            lines=3,
                             interactive=False,
                             elem_classes="ais-transcript",
                         )
                         response_output = gr.Textbox(
-                            label="Doctor's Guidance",
-                            lines=9,
+                            label="Doctor's Spoken Guidance",
+                            lines=6,
                             interactive=False,
                         )
                         audio_output = gr.Audio(
@@ -571,6 +601,9 @@ with gr.Blocks(title=APP_TITLE) as iface:
                             type="filepath",
                             autoplay=True,
                             elem_classes="ais-audio",
+                        )
+                        triage_notes_output = gr.Markdown(
+                            label="Clinical Intake Summary",
                         )
 
                 gr.HTML(
@@ -591,10 +624,16 @@ with gr.Blocks(title=APP_TITLE) as iface:
             """
         )
 
+    demo_button.click(
+        fn=load_demo_sample,
+        inputs=[],
+        outputs=[audio_input, image_input, video_input],
+    )
+
     analyze_button.click(
         fn=process_inputs,
         inputs=[audio_input, image_input, video_input],
-        outputs=[transcript_output, response_output, audio_output],
+        outputs=[transcript_output, response_output, audio_output, triage_badge_output, triage_notes_output],
     )
 
 
